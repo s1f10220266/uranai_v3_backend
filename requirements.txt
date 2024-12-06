@@ -1,0 +1,11 @@
+flask
+flask_cors
+chromadb
+gunicorn
+openai
+langchain-chroma
+langchain-text-splitters
+langchain-community
+langchain-openai
+langchain-core
+Flask-Caching
