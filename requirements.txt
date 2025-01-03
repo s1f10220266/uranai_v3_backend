@@ -12,3 +12,4 @@ Flask-Caching
 flask-sqlalchemy==3.0.0
 psycopg2
 werkzeug
+sqlalchemy==1.4.48
