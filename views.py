@@ -11,6 +11,7 @@ from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 from flask_caching import Cache
 from werkzeug.security import generate_password_hash
+from flask_sqlalchemy import SQLAlchemy
 
 my_app = Flask(__name__, static_folder='static')
 my_app.secret_key = os.getenv("FLASK_SECRET_KEY")
