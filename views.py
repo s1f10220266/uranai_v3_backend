@@ -41,9 +41,11 @@ class Account(db.Model):
     def __repr__(self):
         return f'<Account {self.username}>'
 
-@my_app.before_first_request
+@app.before_first_request
 def create_tables():
-    db.create_all()
+    with app.app_context():
+        db.create_all()
+
 
 @my_app.route('/')
 def serve_frontend():
