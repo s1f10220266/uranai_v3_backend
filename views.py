@@ -41,9 +41,8 @@ class Account(db.Model):
     def __repr__(self):
         return f'<Account {self.username}>'
 
-# アプリケーションの最初のリクエスト前にテーブルを作成
-@my_app.before_first_request
-def create_tables():
+# データベースを初期化
+def initialize_database():
     with my_app.app_context():
         db.create_all()
 
@@ -237,5 +236,6 @@ def account_register():
     
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
+    initialize_database()
     my_app.run()

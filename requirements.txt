@@ -1,7 +1,7 @@
-flask==2.3.2
+flask
 flask_cors
 chromadb
-gunicorn==20.1.0
+gunicorn
 openai
 langchain-chroma
 langchain-text-splitters
@@ -9,7 +9,7 @@ langchain-community
 langchain-openai
 langchain-core
 Flask-Caching
-flask-sqlalchemy==3.0.0
+flask-sqlalchemy
 psycopg2
 werkzeug
-sqlalchemy==1.4.48
+sqlalchemy
