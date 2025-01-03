@@ -10,6 +10,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 from flask_caching import Cache
+from werkzeug.security import generate_password_hash
 
 my_app = Flask(__name__, static_folder='static')
 my_app.secret_key = os.getenv("FLASK_SECRET_KEY")
@@ -23,10 +24,29 @@ CORS(my_app)
 # scenario = None  # シナリオを保持
 # user_job = None
 
+# データベースの実装
+# Postgresql 環境変数からデータベースのURIを設定
+my_app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+
+my_app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(my_app)
+
+# Accountテーブルの定義
+class Account(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), nullable=False, unique=True)
+    password = db.Column(db.String(128), nullable=False)
+    
+    def __repr__(self):
+        return f'<Account {self.username}>'
+
+@app.before_first_request
+def create_tables():
+    db.create_all()
+
 @my_app.route('/')
 def serve_frontend():
     return send_from_directory(my_app.static_folder, 'index.html')
-
 
 # OpenAIの設定
 # 環境変数
@@ -185,6 +205,34 @@ def scenario_gen():
             return jsonify({"scenario": session["SCENARIO"], "type": session["USERTYPE"], "job": session["USERJOB"]})  # シナリオを返す
         else:
             return jsonify({"error": "No scenario found"}), 404  # シナリオがない場合
+
+@my_app.route('/api/register', methods=["POST"])
+def account_register():
+    form_name = request.form.get("name")
     
+    # 作成済みのアカウントを全て取得
+    existing_account = Account.query.filter_by(username=form_name).first()
+    
+    # すでに存在している名前を登録しようとした場合に、エラーを返す
+    if existing_account:  # ユーザーネームが存在する場合
+        return jsonify({"nameExist": False}), 409  # 重複エラー
+    
+    # アカウントの作成
+    try:
+        form_password = request.form.get("password")
+        hashed_password = generate_password_hash(form_password)
+        new_account = Account(
+            username=form_name,
+            password=hashed_password
+        )
+        db.session.add(new_account)
+        db.session.commit()
+        return jsonify({"nameExist": True}), 201  # 正常終了
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500  # サーバーエラー
+    
+
+
 if __name__ == "__main__":
     my_app.run()
