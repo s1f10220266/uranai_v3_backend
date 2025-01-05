@@ -210,30 +210,34 @@ def scenario_gen():
 
 @my_app.route('/api/register', methods=["POST"])
 def account_register():
-    form_name = request.form.get("name")
-    
-    # 作成済みのアカウントを全て取得
-    existing_account = Account.query.filter_by(username=form_name).first()
-    
-    # すでに存在している名前を登録しようとした場合に、エラーを返す
-    if existing_account:  # ユーザーネームが存在する場合
-        return jsonify({"nameExist": False}), 409  # 重複エラー
-    
-    # アカウントの作成
     try:
-        form_password = request.form.get("password")
+        # JSONデータを取得
+        data = request.get_json()
+        form_name = data.get("name")
+        form_password = data.get("password")
+        
+        # 入力データの検証
+        if not form_name or not form_password:
+            return jsonify({"error": "Missing name or password"}), 400
+        
+        # ユーザーネームが既存か確認
+        existing_account = Account.query.filter_by(username=form_name).first()
+        if existing_account:
+            return jsonify({"nameExist": False}), 409  # 重複エラー
+        
+        # アカウントの作成
         hashed_password = generate_password_hash(form_password)
-        new_account = Account(
-            username=form_name,
-            password=hashed_password
-        )
+        new_account = Account(username=form_name, password=hashed_password)
         db.session.add(new_account)
         db.session.commit()
         return jsonify({"nameExist": True}), 201  # 正常終了
+
     except Exception as e:
+        # エラーログの出力
+        my_app.logger.error(f"Error during account registration: {e}")
         db.session.rollback()
-        return jsonify({"error": str(e)}), 500  # サーバーエラー
-    
+        return jsonify({"error": "An internal error occurred"}), 500
+
 
 
 if __name__ == '__main__':
