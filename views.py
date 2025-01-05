@@ -10,8 +10,6 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 from flask_caching import Cache
-from werkzeug.security import generate_password_hash
-from flask_sqlalchemy import SQLAlchemy
 
 my_app = Flask(__name__, static_folder='static')
 my_app.secret_key = os.getenv("FLASK_SECRET_KEY")
@@ -24,53 +22,25 @@ CORS(my_app)
 # latest_result = None
 # scenario = None  # シナリオを保持
 # user_job = None
-
-# データベースの実装
-# Postgresql 環境変数からデータベースのURIを設定
-my_app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
-
-my_app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(my_app)
-
-# Accountテーブルの定義
-class Account(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), nullable=False, unique=True)
-    password = db.Column(db.String(128), nullable=False)
-    
-    def __repr__(self):
-        return f'<Account {self.username}>'
-
-# データベースを初期化
-def initialize_database():
-    with my_app.app_context():
-        db.create_all()
-
 @my_app.route('/')
 def serve_frontend():
     return send_from_directory(my_app.static_folder, 'index.html')
-
 # OpenAIの設定
 # 環境変数
 openai_api_key = os.getenv("OPENAI_API_KEY")
 openai_api_base = os.getenv("OPENAI_API_BASE")
 llm = ChatOpenAI(api_key=openai_api_key, base_url=openai_api_base, model="gpt-4o-mini", temperature=0)
 file_path = os.path.join(os.path.dirname(__file__), 'learn_16personalities.txt')
-
-
-
 #Embeddingを行うモデル
 embeddings_model = OpenAIEmbeddings(
     openai_api_base=openai_api_base
 )
-
 #テキストファイルを読み込み
 loader = TextLoader(file_path)
 doc = loader.load()
 #読み込んだ内容をチャンク化
 splitter = RecursiveCharacterTextSplitter(chunk_size=512, chunk_overlap=20) #分割するためのオブジェクト
 splited = splitter.split_documents(doc)
-
 #Embeddingを行うモデル
 embeddings_model = OpenAIEmbeddings(
     openai_api_base=openai_api_base
@@ -79,12 +49,9 @@ embeddings_model = OpenAIEmbeddings(
 vectorstore = Chroma.from_documents(documents=doc, embedding=embeddings_model)
 #as_revectorstorメソッドでvectorstoreを検索機に変換、検索タイプはコサイン類似度、検索には1つのチャンクを参照、返すようにする
 retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 1})
-
-
 #文章を1行の文字列にフォーマットする関数
 def format_docs(docs):
     return "\n\n".join(doc.page_content for doc in docs)
-
 #プロンプトを作成
 template = """
 以下の情報を参考に、ユーザの性格タイプについて以下の形式のように、箇条書きで簡単にまとめてください。
@@ -102,18 +69,15 @@ template = """
     -
     -
 {context}
-
 ユーザの性格タイプ: {latest_result}
 """
 rag_prompt = PromptTemplate.from_template(template)
-
 rag_chain = (
     {"context": retriever | format_docs, "latest_result": RunnablePassthrough()}
     | rag_prompt
     | llm
     | StrOutputParser()
 )
-
 @my_app.route('/api/type', methods=["POST", "GET"])
 @cache.cached(unless=lambda: request.method == 'POST')
 def user_type():
@@ -149,12 +113,10 @@ def user_type():
             result += "P"
         else:
             result += "J"
-
         # 診断結果を保持
         session['USERTYPE'] = result
             #print("診断結果が保存されました:", latest_result)
         return jsonify({"ready": True})
-
     elif request.method == "GET":
             #print("GETリクエストが呼び出されました")
         if 'USERTYPE' in session:
@@ -162,7 +124,6 @@ def user_type():
             return jsonify({"typeResult": session['USERTYPE'], "typeExplain": ai_explains_type})
         else:
             return jsonify({"error": "No result found"}), 404
-
 #プロンプトを作成
 template2 = """
     あなたは猫の占い師です。
@@ -182,15 +143,12 @@ template2 = """
     {input}
 """
 scenario_prompt = PromptTemplate.from_template(template2)
-
-
 scenario_chain = (
     {"context": retriever | format_docs, "input": RunnablePassthrough()}
     | scenario_prompt
     | llm
     | StrOutputParser()
 )    
-
 @my_app.route('/api/scenario', methods=['POST', 'GET'])
 @cache.cached(unless=lambda: request.method == 'POST')
 def scenario_gen():
@@ -207,35 +165,6 @@ def scenario_gen():
             return jsonify({"scenario": session["SCENARIO"], "type": session["USERTYPE"], "job": session["USERJOB"]})  # シナリオを返す
         else:
             return jsonify({"error": "No scenario found"}), 404  # シナリオがない場合
-
-@my_app.route('/api/register', methods=["POST"])
-def account_register():
-    form_name = request.form.get("name")
     
-    # 作成済みのアカウントを全て取得
-    existing_account = Account.query.filter_by(username=form_name).first()
-    
-    # すでに存在している名前を登録しようとした場合に、エラーを返す
-    if existing_account:  # ユーザーネームが存在する場合
-        return jsonify({"nameExist": False}), 409  # 重複エラー
-    
-    # アカウントの作成
-    try:
-        form_password = request.form.get("password")
-        hashed_password = generate_password_hash(form_password)
-        new_account = Account(
-            username=form_name,
-            password=hashed_password
-        )
-        db.session.add(new_account)
-        db.session.commit()
-        return jsonify({"nameExist": True}), 201  # 正常終了
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 500  # サーバーエラー
-    
-
-
-if __name__ == '__main__':
-    initialize_database()
+if __name__ == "__main__":
     my_app.run()

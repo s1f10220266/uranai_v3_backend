@@ -9,7 +9,3 @@ langchain-community
 langchain-openai
 langchain-core
 Flask-Caching
-flask-sqlalchemy
-psycopg2
-werkzeug
-sqlalchemy
