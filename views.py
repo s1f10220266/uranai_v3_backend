@@ -10,7 +10,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 from flask_caching import Cache
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
 
 my_app = Flask(__name__, static_folder='static')
@@ -256,7 +256,7 @@ def account_login():
             return jsonify({"loginSuccess": False, "error": "Account does not exist"}), 404  # アカウントが存在しない
         
         # パスワードが正しいか確認
-        if existing_account.password != account_password:
+        if not check_password_hash(existing_account.password, account_password):
             return jsonify({"loginSuccess": False, "error": "Incorrect password"}), 401  # パスワードが違う
         
         # ログイン成功
