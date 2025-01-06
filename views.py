@@ -245,33 +245,25 @@ def account_login():
         data = request.get_json()
         account_name = data.get("name")
         account_password = data.get("password")
-
-        print(f"Received username: {account_name}, password: {account_password}")  # ログ追加
         
         # 入力データの検証
         if not account_name or not account_password:
-            print("Missing username or password")  # ログ追加
             return jsonify({"error": "Missing name or password"}), 400
         
         # ユーザーネームが存在するか確認
         existing_account = Account.query.filter_by(username=account_name).first()
         if not existing_account:
-            print(f"Account not found for username: {account_name}")  # ログ追加
-            return jsonify({"loginSuccess": False, "error": "Account does not exist"}), 404
+            return jsonify({"loginSuccess": False, "error": "Account does not exist"}), 404  # アカウントが存在しない
         
         # パスワードが正しいか確認
-        is_password_correct = check_password_hash(existing_account.password, account_password)
-        print(f"Password check: {is_password_correct}, Stored hash: {existing_account.password}, Input password: {account_password}")  # ログ追加
-
-        if not is_password_correct:
-            return jsonify({"loginSuccess": False, "error": "Incorrect password"}), 401
+        if not check_password_hash(existing_account.password, account_password):
+            return jsonify({"loginSuccess": False, "error": "Incorrect password"}), 401  # パスワードが違う
         
-        print("Login successful!")  # ログ追加
+        # ログイン成功
         return jsonify({"loginSuccess": True, "name": account_name}), 200
 
     except Exception as e:
-        print(f"Error during login: {str(e)}")  # エラーログ
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(e)}), 500  # サーバーエラー
 
 
 
