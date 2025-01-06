@@ -238,6 +238,33 @@ def account_register():
         db.session.rollback()
         return jsonify({"error": "An internal error occurred"}), 500
 
+@my_app.route('/api/login', methods=["POST"])
+def account_login():
+    try:
+        # JSONデータを取得
+        data = request.get_json()
+        account_name = data.get("name")
+        account_password = data.get("password")
+        
+        # 入力データの検証
+        if not account_name or not account_password:
+            return jsonify({"error": "Missing name or password"}), 400
+        
+        # ユーザーネームが存在するか確認
+        existing_account = Account.query.filter_by(username=account_name).first()
+        if not existing_account:
+            return jsonify({"loginSuccess": False, "error": "Account does not exist"}), 404  # アカウントが存在しない
+        
+        # パスワードが正しいか確認
+        if existing_account.password != account_password:
+            return jsonify({"loginSuccess": False, "error": "Incorrect password"}), 401  # パスワードが違う
+        
+        # ログイン成功
+        return jsonify({"loginSuccess": True, "name": account_name}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500  # サーバーエラー
+
 
 
 if __name__ == '__main__':
