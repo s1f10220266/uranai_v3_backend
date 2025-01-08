@@ -114,46 +114,48 @@ rag_chain = (
     | StrOutputParser()
 )
 
-@my_app.route('/api/type', methods=["POST", "GET"])
-@cache.cached(unless=lambda: request.method == 'POST')
+@my_app.route('/api/type', methods=["POST"])
 def user_type():
-    if request.method == "POST":
-        rcv = request.get_json()
-        result = ""
+    rcv = request.get_json()
+    result = ""
+    
+    
+    # 各指標のスコアを計算
+    score_e_i = sum(rcv.get("e_or_i", []))
+    score_s_n = sum(rcv.get("s_or_n", []))
+    score_t_f = sum(rcv.get("t_or_f", []))
+    score_p_j = sum(rcv.get("p_or_j", []))
+    
+    # 性格タイプの判定
+    if score_e_i >= 0:
+        result += "E"
+    else:
+        result += "I"
         
-        # 各指標のスコアを計算
-        score_e_i = sum(rcv.get("e_or_i", []))
-        score_s_n = sum(rcv.get("s_or_n", []))
-        score_t_f = sum(rcv.get("t_or_f", []))
-        score_p_j = sum(rcv.get("p_or_j", []))
+    if score_s_n >= 0:
+        result += "S"
+    else:
+        result += "N"
         
-        # 性格タイプの判定
-        if score_e_i >= 0:
-            result += "E"
-        else:
-            result += "I"
-            
-        if score_s_n >= 0:
-            result += "S"
-        else:
-            result += "N"
-            
-        if score_t_f >= 0:
-            result += "T"
-        else:
-            result += "F"
-            
-        if score_p_j >= 0:
-            result += "P"
-        else:
-            result += "J"
+    if score_t_f >= 0:
+        result += "T"
+    else:
+        result += "F"
+        
+    if score_p_j >= 0:
+        result += "P"
+    else:
+        result += "J"
 
-        return jsonify({"ready": True})
+    return jsonify({"ready": True, "result": result})
 
-    elif request.method == "GET":
+@my_app.route('/api/judge', methods=["POST"])
+def user_type_explain():
+        rcv = request.get_json() # resultをフロントエンドから受け取る
+        result = rcv.get("result", [])
         if result != "":
-            ai_explains_type = rag_chain.invoke(result)
-            return jsonify({"typeResult": result, "typeExplain": ai_explains_type})
+            ai_explains_type = rag_chain.invoke(result) # 処理
+            return jsonify({"typeResult": result, "typeExplain": ai_explains_type}) # 結果を返す
         else:
             return jsonify({"error": "No result found"}), 404
 
