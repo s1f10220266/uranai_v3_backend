@@ -117,8 +117,6 @@ rag_chain = (
 @my_app.route('/api/type', methods=["POST", "GET"])
 @cache.cached(unless=lambda: request.method == 'POST')
 def user_type():
-    # global latest_result
-    
     if request.method == "POST":
         rcv = request.get_json()
         result = ""
@@ -150,16 +148,12 @@ def user_type():
         else:
             result += "J"
 
-        # 診断結果を保持
-        session['USERTYPE'] = result
-            #print("診断結果が保存されました:", latest_result)
         return jsonify({"ready": True})
 
     elif request.method == "GET":
-            #print("GETリクエストが呼び出されました")
-        if 'USERTYPE' in session:
-            ai_explains_type = rag_chain.invoke(session['USERTYPE'])
-            return jsonify({"typeResult": session['USERTYPE'], "typeExplain": ai_explains_type})
+        if result != "":
+            ai_explains_type = rag_chain.invoke(result)
+            return jsonify({"typeResult": result, "typeExplain": ai_explains_type})
         else:
             return jsonify({"error": "No result found"}), 404
 
