@@ -187,22 +187,14 @@ scenario_chain = (
     | StrOutputParser()
 )    
 
-@my_app.route('/api/scenario', methods=['POST', 'GET'])
-@cache.cached(unless=lambda: request.method == 'POST')
+@my_app.route('/api/scenario', methods=['POST'])
 def scenario_gen():
-    # global scenario  # グローバル変数を参照
-    # global user_job
-    if request.method == 'POST':
-        rcv = request.get_json()
-        session['USERJOB'] = rcv.get("job", "")
-        input = f"ユーザの性格タイプは{session['USERTYPE']}です。将来は{session['USERJOB']}になりたいと思っています。ユーザが将来{session['USERJOB']}に就いた時のシナリオを生成してください。"
-        session["SCENARIO"] = scenario_chain.invoke(input)
-        return jsonify({"scenarioReady": True})  # シナリオが生成されたことを示すフラグ
-    elif request.method == 'GET':
-        if 'SCENARIO' in session:
-            return jsonify({"scenario": session["SCENARIO"], "type": session["USERTYPE"], "job": session["USERJOB"]})  # シナリオを返す
-        else:
-            return jsonify({"error": "No scenario found"}), 404  # シナリオがない場合
+    rcv = request.get_json()
+    user_type = rcv.get("type", "")
+    user_job = rcv.get("job", "")
+    input = f"ユーザの性格タイプは{user_type}です。将来は{user_job}になりたいと思っています。ユーザが将来{user_job}に就いた時のシナリオを生成してください。"
+    scenario = scenario_chain.invoke(input)
+    return jsonify({"scenarioReady": True, "scenario": scenario})  # シナリオが生成されたことを示すフラグ
 
 @my_app.route('/api/register', methods=["POST"])
 def account_register():
