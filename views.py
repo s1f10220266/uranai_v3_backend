@@ -146,18 +146,19 @@ def user_type():
         result += "P"
     else:
         result += "J"
-
-    return jsonify({"ready": True, "result": result})
+        
+    ai_explains_type = rag_chain.invoke(result)
+    return jsonify({"ready": True, "result": result, "typeExplain": ai_explains_type})
 
 @my_app.route('/api/judge', methods=["POST"])
 def user_type_explain():
-        rcv = request.get_json() # resultをフロントエンドから受け取る
-        result = rcv.get("result", [])
-        if result != "":
-            ai_explains_type = rag_chain.invoke(result) # 処理
-            return jsonify({"typeResult": result, "typeExplain": ai_explains_type}) # 結果を返す
-        else:
-            return jsonify({"error": "No result found"}), 404
+    rcv = request.get_json() # resultをフロントエンドから受け取る
+    result = rcv.get("result", [])
+    if result != "":
+        ai_explains_type = rag_chain.invoke(result) # 処理
+        return jsonify({"typeResult": result, "typeExplain": ai_explains_type}) # 結果を返す
+    else:
+        return jsonify({"error": "No result found"}), 404
 
 #プロンプトを作成
 template2 = """
