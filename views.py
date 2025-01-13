@@ -119,7 +119,6 @@ def user_type():
     rcv = request.get_json()
     result = ""
     
-    
     # 各指標のスコアを計算
     score_e_i = sum(rcv.get("e_or_i", []))
     score_s_n = sum(rcv.get("s_or_n", []))
@@ -149,6 +148,14 @@ def user_type():
         
     ai_explains_type = rag_chain.invoke(result)
     return jsonify({"ready": True, "result": result, "typeExplain": ai_explains_type})
+
+@my_app.route("/api/knowntype", methods=["POST"])
+def user_knows_type():
+    rcv = request.get_json()
+    result = rcv.get("type", "")
+    ai_explains_type = rag_chain.invoke(result)
+    return jsonify({"ready": True, "result": result, "typeExplain": ai_explains_type})
+
 
 @my_app.route('/api/judge', methods=["POST"])
 def user_type_explain():
