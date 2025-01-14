@@ -42,7 +42,7 @@ class Uranai(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)  # 外部キー
     user_type = db.Column(db.String(4), nullable=False)  # 性格タイプ
-    job = db.Column(db.String(25), nullable=False)  # 職業
+    user_job = db.Column(db.String(25), nullable=False)  # 職業
     scenario = db.Column(db.Text, nullable=False)  # シナリオ内容
 
     # Accountテーブルとのリレーション
@@ -214,9 +214,10 @@ def scenario_gen():
     scenario = scenario_chain.invoke(input)
     account = Account.query.filter_by(username=user_name).first()
     # Uranaiテーブルに保存
-    generated = Uranai(account_id=account.id, job=user_job, user_type=user_type, scenario=scenario)
-    db.session.add(generated)
-    db.session.commit()
+    if (user_name != ""):
+        generated = Uranai(account_id=account.id, user_job=user_job, user_type=user_type, scenario=scenario)
+        db.session.add(generated)
+        db.session.commit()
     return jsonify({"scenarioReady": True, "scenario": scenario})  # シナリオが生成されたことを示すフラグ
 
 @my_app.route('/api/register', methods=["POST"])
