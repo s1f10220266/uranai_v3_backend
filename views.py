@@ -214,7 +214,7 @@ def scenario_gen():
     scenario = scenario_chain.invoke(input)
     account = Account.query.filter_by(username=user_name).first()
     # Uranaiテーブルに保存
-    generated = Uranai(account_id=account.id, user_job=user_job, user_type=user_type, scenario=scenario)
+    generated = Uranai(account_id=account.id, job=user_job, user_type=user_type, scenario=scenario)
     db.session.add(generated)
     db.session.commit()
     return jsonify({"scenarioReady": True, "scenario": scenario})  # シナリオが生成されたことを示すフラグ
