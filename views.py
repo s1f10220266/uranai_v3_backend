@@ -212,6 +212,7 @@ def scenario_gen():
     user_name = rcv.get("name", "")
     input = f"ユーザの性格タイプは{user_type}です。将来は{user_job}になりたいと思っています。ユーザが将来{user_job}に就いた時のシナリオを生成してください。"
     scenario = scenario_chain.invoke(input)
+    account = Account.query.filter_by(username=user_name).first()
     # Uranaiテーブルに保存
     generated = Uranai(account_id=account.id, user_type=user_type, scenario=scenario)
     db.session.add(generated)
