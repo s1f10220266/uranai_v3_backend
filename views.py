@@ -20,10 +20,6 @@ my_app.config["CACHE_TYPE"] = "simple"
 cache = Cache(my_app)
 CORS(my_app)
 
-# # グローバル変数に性格診断の結果を一時的に保持
-# latest_result = None
-# scenario = None  # シナリオを保持
-# user_job = None
 
 # データベースの実装
 # Postgresql 環境変数からデータベースのURIを設定
@@ -40,7 +36,20 @@ class Account(db.Model):
     
     def __repr__(self):
         return f'<Account {self.username}>'
+    
+# Uranaiテーブルの定義
+class Uranai(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)  # 外部キー
+    user_type = db.Column(db.String(4), nullable=False)  # 性格タイプ
+    job = db.Column(db.String(25), nullable=False)  # 職業
+    scenario = db.Column(db.Text, nullable=False)  # シナリオ内容
 
+    # Accountテーブルとのリレーション
+    account = db.relationship('Account', backref=db.backref('uranai_entries', lazy=True))
+
+    def __repr__(self):
+        return f'<Uranai for Account {self.account_id}>'
 # データベースを初期化
 def initialize_database():
     with my_app.app_context():
@@ -200,8 +209,13 @@ def scenario_gen():
     rcv = request.get_json()
     user_type = rcv.get("type", "")
     user_job = rcv.get("job", "")
+    user_name = rcv.get("name", "")
     input = f"ユーザの性格タイプは{user_type}です。将来は{user_job}になりたいと思っています。ユーザが将来{user_job}に就いた時のシナリオを生成してください。"
     scenario = scenario_chain.invoke(input)
+    # Uranaiテーブルに保存
+    generated = Uranai(account_id=account.id, user_type=user_type, scenario=scenario)
+    db.session.add(generated)
+    db.session.commit()
     return jsonify({"scenarioReady": True, "scenario": scenario})  # シナリオが生成されたことを示すフラグ
 
 @my_app.route('/api/register', methods=["POST"])
@@ -261,6 +275,37 @@ def account_login():
     except Exception as e:
         return jsonify({"error": str(e)}), 500  # サーバーエラー
 
+@my_app.route('/api/past', methods=["POST"])
+def past_uranai():
+    try:
+        # JSONデータを取得
+        info = request.get_json()
+        account_name = info.get("name")
+        
+        if not account_name:
+            return jsonify({"error": "Account name is required"}), 400
+
+        # Accountテーブルからusernameで該当アカウントを取得
+        account = Account.query.filter_by(username=account_name).first()
+        if not account:
+            return jsonify({"error": "User not found"}), 404
+
+        # Uranaiテーブルからすべてのデータを取得
+        past_entries = Uranai.query.filter_by(account_id=account.id).all()
+
+        # 結果をリスト形式でまとめる
+        past = {
+            "uranai_user_type": [entry.user_type for entry in past_entries],
+            "uranai_user_job": [entry.job for entry in past_entries],
+            "uranai_user_scenario": [entry.scenario for entry in past_entries]
+        }
+
+        return jsonify({"past": past})
+
+    except Exception as e:
+        my_app.logger.error(f"Error in past_uranai: {e}")
+        return jsonify({"error": "An internal error occurred"}), 500
+    
 
 
 if __name__ == '__main__':
