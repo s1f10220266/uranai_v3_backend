@@ -210,14 +210,25 @@ def scenario_gen():
     user_type = rcv.get("type", "")
     user_job = rcv.get("job", "")
     user_name = rcv.get("name", "")
-    input = f"ユーザの性格タイプは{user_type}です。将来は{user_job}になりたいと思っています。ユーザが将来{user_job}に就いた時のシナリオを生成してください。"
-    scenario = scenario_chain.invoke(input)
+
+    # ログインしていない場合
+    if user_name == "":
+        scenario = scenario_chain.invoke(f"ユーザの性格タイプは{user_type}です。将来は{user_job}になりたいと思っています。ユーザが将来{user_job}に就いた時のシナリオを生成してください。")
+        return jsonify({"scenarioReady": True, "scenario": scenario})  # シナリオのみを返す
+
+    # ログインしている場合
     account = Account.query.filter_by(username=user_name).first()
-    # Uranaiテーブルに保存
-    if (user_name != ""):
-        generated = Uranai(account_id=account.id, user_job=user_job, user_type=user_type, scenario=scenario)
-        db.session.add(generated)
-        db.session.commit()
+    if not account:
+        return jsonify({"error": "Account not found"}), 404
+
+    # シナリオ生成
+    scenario = scenario_chain.invoke(f"ユーザの性格タイプは{user_type}です。将来は{user_job}になりたいと思っています。ユーザが将来{user_job}に就いた時のシナリオを生成してください。")
+
+    # データベース保存
+    generated = Uranai(account_id=account.id, user_job=user_job, user_type=user_type, scenario=scenario)
+    db.session.add(generated)
+    db.session.commit()
+
     return jsonify({"scenarioReady": True, "scenario": scenario})  # シナリオが生成されたことを示すフラグ
 
 @my_app.route('/api/register', methods=["POST"])
