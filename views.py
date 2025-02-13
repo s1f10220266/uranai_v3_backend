@@ -50,6 +50,7 @@ class Uranai(db.Model):
 
     def __repr__(self):
         return f'<Uranai for Account {self.account_id}>'
+    
 # データベースを初期化
 def initialize_database():
     with my_app.app_context():
@@ -63,10 +64,12 @@ def serve_frontend():
 # 環境変数
 openai_api_key = os.getenv("OPENAI_API_KEY")
 openai_api_base = os.getenv("OPENAI_API_BASE")
+
+# モデルの定義
 llm = ChatOpenAI(api_key=openai_api_key, base_url=openai_api_base, model="gpt-4o-mini", temperature=0)
+
+# RAGで読み込むファイルのパス
 file_path = os.path.join(os.path.dirname(__file__), 'learn_16personalities.txt')
-
-
 
 #Embeddingを行うモデル
 embeddings_model = OpenAIEmbeddings(
@@ -76,15 +79,12 @@ embeddings_model = OpenAIEmbeddings(
 #テキストファイルを読み込み
 loader = TextLoader(file_path)
 doc = loader.load()
+
 #読み込んだ内容をチャンク化
-splitter = RecursiveCharacterTextSplitter(chunk_size=512, chunk_overlap=20) #分割するためのオブジェクト
+splitter = RecursiveCharacterTextSplitter(chunk_size=512, chunk_overlap=20) # 分割するためのオブジェクト
 splited = splitter.split_documents(doc)
 
-#Embeddingを行うモデル
-embeddings_model = OpenAIEmbeddings(
-    openai_api_base=openai_api_base
-)
-#Emmbeddingの結果をCromaに保存、オブジェクトとして保存
+#Emmbeddingの結果をCromaに保存し、オブジェクト化
 vectorstore = Chroma.from_documents(documents=doc, embedding=embeddings_model)
 #as_revectorstorメソッドでvectorstoreを検索機に変換、検索タイプはコサイン類似度、検索には1つのチャンクを参照、返すようにする
 retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 1})
@@ -114,8 +114,10 @@ template = """
 
 ユーザの性格タイプ: {latest_result}
 """
+# プロンプトテンプレート化
 rag_prompt = PromptTemplate.from_template(template)
 
+# chainオブジェクト
 rag_chain = (
     {"context": retriever | format_docs, "latest_result": RunnablePassthrough()}
     | rag_prompt
@@ -176,7 +178,7 @@ def user_type_explain():
     else:
         return jsonify({"error": "No result found"}), 404
 
-#プロンプトを作成
+# プロンプトを作成
 template2 = """
     あなたは猫の占い師です。
     あなたにはユーザの性格を4文字のアルファベットで表す16タイプ性格診断の結果とユーザが将来なりたい職業が与えられます。
@@ -255,6 +257,7 @@ def account_register():
         db.session.commit()
         return jsonify({"nameExist": True}), 201  # 正常終了
 
+    # エラー処理
     except Exception as e:
         # エラーログの出力
         my_app.logger.error(f"Error during account registration: {e}")
@@ -285,6 +288,7 @@ def account_login():
         # ログイン成功
         return jsonify({"loginSuccess": True, "name": account_name}), 200
 
+    # エラー処理
     except Exception as e:
         return jsonify({"error": str(e)}), 500  # サーバーエラー
 
@@ -315,6 +319,7 @@ def past_uranai():
 
         return jsonify({"past": past})
 
+    # エラー処理
     except Exception as e:
         my_app.logger.error(f"Error in past_uranai: {e}")
         return jsonify({"error": "An internal error occurred"}), 500
