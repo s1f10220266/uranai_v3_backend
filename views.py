@@ -218,7 +218,7 @@ def scenario_gen():
         scenario = scenario_chain.invoke(f"ユーザの性格タイプは{user_type}です。将来は{user_job}になりたいと思っています。ユーザが将来{user_job}に就いた時のシナリオを生成してください。")
         return jsonify({"scenarioReady": True, "scenario": scenario})  # シナリオのみを返す
 
-    # ログインしている場合
+    # ログインしている場合 データベースから指定したusernameを持つAccountを検索し格納
     account = Account.query.filter_by(username=user_name).first()
     if not account:
         return jsonify({"error": "Account not found"}), 404
